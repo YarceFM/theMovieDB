@@ -5,7 +5,7 @@ trendingBtn.addEventListener('click', () => {
   location.hash = '#trends='
 })
 arrowBtn.addEventListener('click', () => {
-  location.hash = '#home'
+  window.history.back();
 })
 
 window.addEventListener('DOMContentLoaded', navigator, false)
