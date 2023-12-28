@@ -1,3 +1,7 @@
+let maxPage;
+let page = 1;
+let infiniteScroll;
+
 searchFormBtn.addEventListener('click', () => {
   location.hash = '#search=' + searchFormInput.value;
 })
@@ -8,12 +12,16 @@ arrowBtn.addEventListener('click', () => {
   window.history.back();
 })
 
-window.addEventListener('DOMContentLoaded', navigator, false)
-window.addEventListener('hashchange', navigator, false)
+window.addEventListener('DOMContentLoaded', navigator, false);
+window.addEventListener('hashchange', navigator, false);
+window.addEventListener('scroll', infiniteScroll, false);
 
 function navigator() {
-  console.log({location});
-  
+  if (infiniteScroll) {
+    window.removeEventListener('scroll', infiniteScroll, {passive: false});
+    infiniteScroll = undefined;
+  }
+
   if (location.hash.startsWith('#trends')) {
     trendsPage();
   } else if (location.hash.startsWith('#search=')) {
@@ -28,10 +36,13 @@ function navigator() {
 
   document.documentElement.scrollTop = 0;
   document.body.scrollTop = 0;
+
+  if (infiniteScroll) {
+    window.addEventListener('scroll', infiniteScroll, {passive: false})
+  }
 }
 
 function homePage() {
-  console.log('Home!!');
 
   headerSection.classList.remove('header-container--long');
   headerSection.style.background = '';
@@ -71,11 +82,11 @@ const [categoryId, categoryNameEncoded] = categoryData.split('-');
 const categoryName = decodeURIComponent(categoryNameEncoded.replace(/\+/g, ' '));
 
 headerCategoryTitle.innerHTML = categoryName;
-  console.log(categoryData, categoryName);
 
   getMoviesByCategory(categoryId);
 
-  console.log('Categories!!');
+  infiniteScroll = getPaginatedMoviesByCategory(id);
+
 }
 
 function movieDetailsPage() {
@@ -95,7 +106,6 @@ function movieDetailsPage() {
    const [_, movieId] = location.hash.split('=');
   getMovieById(movieId);
 
-  console.log('Categories!!');
 }
 
 function searchPage() {
@@ -115,7 +125,8 @@ function searchPage() {
   const query = searchFormInput.value;
   getMoviesBySearch(query);
 
-  console.log('Search!!');
+  infiniteScroll = getPaginatedMoviesBySearch(query);
+
 }
 
 function trendsPage() {
@@ -136,5 +147,5 @@ function trendsPage() {
 
   getTrendingMovies();
 
-  console.log('Search!!');
+  InfiniteScroll = getPaginatedTrendingMovies;
 }
