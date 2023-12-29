@@ -1,32 +1,66 @@
+// Data
+
 const api = axios.create({
-  baseURL: 'https://api.themoviedb.org/3/',
   headers: {
     accept: 'application/json',
     Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIzMzNmN2FiM2U1NmY4NWZhMjk0ZDA3NTAwYjA4MDMxNSIsInN1YiI6IjY1ODZmOTczNjg4Y2QwNTdiMjg0NWVjOSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.1fm9pVN88bHuSK0847BtkutbvTr80nvL8-nkNrVJ9vw'
   },
+  baseURL: 'https://api.themoviedb.org/3/',
 });
+
+function likedMoviesList() {
+  const item = JSON.parse(localStorage.getItem('liked_movies'));
+  let movies;
+
+  if (item) {
+    movies = item;
+  } else {
+    movies = {};
+  }
+  
+  return movies;
+}
+
+function likeMovie(movie) {
+  // movie.id
+  likedMovieSection.innerHTML = ''
+  const likedMovies = likedMoviesList();
+
+  console.log(likedMovies)
+  
+  if (likedMovies[movie.id]) {
+    likedMovies[movie.id] = undefined;
+  } else {
+    likedMovies[movie.id] = movie;
+  }
+
+  localStorage.setItem('liked_movies', JSON.stringify(likedMovies));
+
+  getLikedMovies();
+}
+
 
 // Utils
 
-const lazyLoader = new IntersectionObserver(entries => {
-  entries.forEach(entry => {
+const lazyLoader = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
     if (entry.isIntersecting) {
-      const url = entry.target.getAttribute('data-img');
+      const url = entry.target.getAttribute('data-img')
       entry.target.setAttribute('src', url);
     }
-  })
+  });
 });
 
-function createmovies(
-    movies,
-    container,
-    {
-      lazyLoad = false,
-      clean = true
-    } = {}
-  ) {
+function createMovies(
+  movies,
+  container,
+  {
+    lazyLoad = false,
+    clean = true,
+  } = {},
+) {
   if (clean) {
-    container.innerHTML = ''; 
+    container.innerHTML = '';
   }
 
   movies.forEach(movie => {
@@ -36,24 +70,32 @@ function createmovies(
     const movieImg = document.createElement('img');
     movieImg.classList.add('movie-img');
     movieImg.setAttribute('alt', movie.title);
-    movieImg.setAttribute(lazyLoad ? 'data-img' : 'src', `https://image.tmdb.org/t/p/w500${movie.poster_path}`);
-    movieImg.addEventListener('error', () => {
-      movieImg.style.display= "none";
-    });
+    movieImg.setAttribute(
+      lazyLoad ? 'data-img' : 'src',
+      'https://image.tmdb.org/t/p/w300' + movie.poster_path,
+    );
     movieImg.addEventListener('click', () => {
       location.hash = '#movie=' + movie.id;
-    })
+    });
+    movieImg.addEventListener('error', () => {
+      movieImg.setAttribute(
+        'src',
+        'https://static.platzi.com/static/images/error/img404.png',
+      );
+    });
 
-    const movieBtn = document.createElement('botton');
+    const movieBtn = document.createElement('button');
     movieBtn.classList.add('movie-btn');
+    likedMoviesList()[movie.id] && movieBtn.classList.add('movie-btn--liked');
     movieBtn.addEventListener('click', () => {
       movieBtn.classList.toggle('movie-btn--liked');
+      likeMovie(movie);
     });
 
     if (lazyLoad) {
       lazyLoader.observe(movieImg);
     }
-    
+
     movieContainer.appendChild(movieImg);
     movieContainer.appendChild(movieBtn);
     container.appendChild(movieContainer);
@@ -61,17 +103,17 @@ function createmovies(
 }
 
 function createCategories(categories, container) {
-  container.innerHTML = '';
+  container.innerHTML = "";
 
-  categories.forEach(category => {
+  categories.forEach(category => {  
     const categoryContainer = document.createElement('div');
     categoryContainer.classList.add('category-container');
 
     const categoryTitle = document.createElement('h3');
     categoryTitle.classList.add('category-title');
-    categoryTitle.setAttribute('id', `id${category.id}`);
+    categoryTitle.setAttribute('id', 'id' + category.id);
     categoryTitle.addEventListener('click', () => {
-      location.hash = `#category=${category.id}-${category.name}`
+      location.hash = `#category=${category.id}-${category.name}`;
     });
     const categoryTitleText = document.createTextNode(category.name);
 
@@ -81,288 +123,176 @@ function createCategories(categories, container) {
   });
 }
 
-//Llamados a la API
-
-window.addEventListener('scroll', getPaginatedTrendingMovies);
+// Llamados a la API
 
 async function getTrendingMoviesPreview() {
-  try{
-    const {data} = await api('trending/movie/day');
-    const movies = data.results;
+  const { data } = await api('trending/movie/day');
+  const movies = data.results;
+  console.log(movies)
 
-    createmovies(movies, trendingMoviesPreviewList, true);
-
-  } catch (error) {
-    // Aquí manejas el error
-    if (error.response) {
-      // La solicitud fue realizada y el servidor respondió con un código de estado fuera del rango 2xx
-      console.error('Respuesta del servidor con error:', error.response.data);
-      console.error('Código de estado:', error.response.status);
-    } else if (error.request) {
-      // La solicitud fue realizada pero no se recibió respuesta
-      console.error('No se recibió respuesta del servidor');
-    } else {
-      // Ocurrió un error al configurar la solicitud
-      console.error('Error al configurar la solicitud:', error.message);
-    }
-  }
+  createMovies(movies, trendingMoviesPreviewList, true);
 }
 
-async function getCategoriesPreview() {
-  try{
-    const {data} = await api('genre/movie/list');
-    const categories = data.genres;
+async function getCategegoriesPreview() {
+  const { data } = await api('genre/movie/list');
+  const categories = data.genres;
 
-    createCategories(categories, categoriesPreviewList);
+  createCategories(categories, categoriesPreviewList);
+}
 
-  } catch (error) {
-    // Aquí manejas el error
-    if (error.response) {
-      // La solicitud fue realizada y el servidor respondió con un código de estado fuera del rango 2xx
-      console.error('Respuesta del servidor con error:', error.response.data);
-      console.error('Código de estado:', error.response.status);
-    } else if (error.request) {
-      // La solicitud fue realizada pero no se recibió respuesta
-      console.error('No se recibió respuesta del servidor');
-    } else {
-      // Ocurrió un error al configurar la solicitud
-      console.error('Error al configurar la solicitud:', error.message);
-    }
-  }
+async function getMoviesByCategory(id) {
+  const { data } = await api('discover/movie', {
+    params: {
+      with_genres: id,
+    },
+  });
+  const movies = data.results;
+  maxPage = data.total_pages;
+
+  createMovies(movies, genericSection, { lazyLoad: true });
 }
 
 function getPaginatedMoviesByCategory(id) {
   return async function () {
-    try{
-      const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+    const {
+      scrollTop,
+      scrollHeight,
+      clientHeight
+    } = document.documentElement;
+    
+    const scrollIsBottom = (scrollTop + clientHeight) >= (scrollHeight - 15);
+    const pageIsNotMax = page < maxPage;
   
-      const scrollIsBottom = (scrollTop + clientHeight) >= (scrollHeight -15);
-      const pageIsNotMax = page < maxPage;
-  
-      if (scrollIsBottom && pageIsNotMax) {
-        page++
-        const {data} = await api('discover/movie', {
-          params: {
-            with_genres: id,
-            page,
-          },
-        });
-        const movies = data.results;
-  
-        createmovies(movies, genericSection, {lazyLoad: true, clean: false});
-      }
-  
-    } catch (error) {
-      // Aquí manejas el error
-      if (error.response) {
-        // La solicitud fue realizada y el servidor respondió con un código de estado fuera del rango 2xx
-        console.error('Respuesta del servidor con error:', error.response.data);
-        console.error('Código de estado:', error.response.status);
-      } else if (error.request) {
-        // La solicitud fue realizada pero no se recibió respuesta
-        console.error('No se recibió respuesta del servidor');
-      } else {
-        // Ocurrió un error al configurar la solicitud
-        console.error('Error al configurar la solicitud:', error.message);
-      }
-    }
-  }
-}
-
-async function getMoviesByCategory(id) {
-  try{
-    const {data} = await api('discover/movie', {
-      params: {
-        with_genres: id,
-      },
-    });
-    const movies = data.results;
-    maxPage = data.total_pages;
-
-    createmovies(movies, genericSection, {lazyLoad: true});
-
-  } catch (error) {
-    // Aquí manejas el error
-    if (error.response) {
-      // La solicitud fue realizada y el servidor respondió con un código de estado fuera del rango 2xx
-      console.error('Respuesta del servidor con error:', error.response.data);
-      console.error('Código de estado:', error.response.status);
-    } else if (error.request) {
-      // La solicitud fue realizada pero no se recibió respuesta
-      console.error('No se recibió respuesta del servidor');
-    } else {
-      // Ocurrió un error al configurar la solicitud
-      console.error('Error al configurar la solicitud:', error.message);
+    if (scrollIsBottom && pageIsNotMax) {
+      page++;
+      const { data } = await api('discover/movie', {
+        params: {
+          with_genres: id,
+          page,
+        },
+      });
+      const movies = data.results;
+    
+      createMovies(
+        movies,
+        genericSection,
+        { lazyLoad: true, clean: false },
+      );
     }
   }
 }
 
 async function getMoviesBySearch(query) {
-  try{
-    const {data} = await api('search/movie', {
-      params: {
-        query,
-      },
-    });
-    const movies = data.results;
-    maxPage = data.total_pages;
+  const { data } = await api('search/movie', {
+    params: {
+      query,
+    },
+  });
+  const movies = data.results;
+  maxPage = data.total_pages;
+  console.log(maxPage)
 
-    createmovies(movies, genericSection);
-
-  } catch (error) {
-    // Aquí manejas el error
-    if (error.response) {
-      // La solicitud fue realizada y el servidor respondió con un código de estado fuera del rango 2xx
-      console.error('Respuesta del servidor con error:', error.response.data);
-      console.error('Código de estado:', error.response.status);
-    } else if (error.request) {
-      // La solicitud fue realizada pero no se recibió respuesta
-      console.error('No se recibió respuesta del servidor');
-    } else {
-      // Ocurrió un error al configurar la solicitud
-      console.error('Error al configurar la solicitud:', error.message);
-    }
-  }
+  createMovies(movies, genericSection);
 }
 
 function getPaginatedMoviesBySearch(query) {
   return async function () {
-    try{
-      const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+    const {
+      scrollTop,
+      scrollHeight,
+      clientHeight
+    } = document.documentElement;
+    
+    const scrollIsBottom = (scrollTop + clientHeight) >= (scrollHeight - 15);
+    const pageIsNotMax = page < maxPage;
   
-      const scrollIsBottom = (scrollTop + clientHeight) >= (scrollHeight -15);
-      const pageIsNotMax = page < maxPage;
-  
-      if (scrollIsBottom && pageIsNotMax) {
-        page++
-        const {data} = await api('search/movie', {
-          params: {
-            query,
-            page,
-          },
-        });
-        const movies = data.results;
-  
-        createmovies(movies, genericSection, {lazyLoad: true, clean: false});
-      }
-  
-    } catch (error) {
-      // Aquí manejas el error
-      if (error.response) {
-        // La solicitud fue realizada y el servidor respondió con un código de estado fuera del rango 2xx
-        console.error('Respuesta del servidor con error:', error.response.data);
-        console.error('Código de estado:', error.response.status);
-      } else if (error.request) {
-        // La solicitud fue realizada pero no se recibió respuesta
-        console.error('No se recibió respuesta del servidor');
-      } else {
-        // Ocurrió un error al configurar la solicitud
-        console.error('Error al configurar la solicitud:', error.message);
-      }
+    if (scrollIsBottom && pageIsNotMax) {
+      page++;
+      const { data } = await api('search/movie', {
+        params: {
+          query,
+          page,
+        },
+      });
+      const movies = data.results;
+    
+      createMovies(
+        movies,
+        genericSection,
+        { lazyLoad: true, clean: false },
+      );
     }
   }
 }
 
 async function getTrendingMovies() {
-  try{
-    const {data} = await api('trending/movie/day');
+  const { data } = await api('trending/movie/day');
+  const movies = data.results;
+  maxPage = data.total_pages;
+
+  createMovies(movies, genericSection, { lazyLoad: true, clean: true });
+}
+
+async function getPaginatedTrendingMovies() {
+  const {
+    scrollTop,
+    scrollHeight,
+    clientHeight
+  } = document.documentElement;
+  
+  const scrollIsBottom = (scrollTop + clientHeight) >= (scrollHeight - 15);
+  const pageIsNotMax = page < maxPage;
+
+  if (scrollIsBottom && pageIsNotMax) {
+    page++;
+    const { data } = await api('trending/movie/day', {
+      params: {
+        page,
+      },
+    });
     const movies = data.results;
-    maxPage = data.total_pages;
 
-    createmovies(movies, genericSection, {lazyLoad: true, clean: true});
-
-  } catch (error) {
-    // Aquí manejas el error
-    if (error.response) {
-      // La solicitud fue realizada y el servidor respondió con un código de estado fuera del rango 2xx
-      console.error('Respuesta del servidor con error:', error.response.data);
-      console.error('Código de estado:', error.response.status);
-    } else if (error.request) {
-      // La solicitud fue realizada pero no se recibió respuesta
-      console.error('No se recibió respuesta del servidor');
-    } else {
-      // Ocurrió un error al configurar la solicitud
-      console.error('Error al configurar la solicitud:', error.message);
-    }
+    createMovies(
+      movies,
+      genericSection,
+      { lazyLoad: true, clean: false },
+    );
   }
 }
 
 async function getMovieById(id) {
-  try{
-    const {data: movie} = await api('movie/' + id);
+  const { data: movie } = await api('movie/' + id);
 
-    const movieImgUrl = 'https://image.tmdb.org/t/p/w500' + movie.poster_path;
-    headerSection.style.background = `
-      linear-gradient(
-        180deg,
-        rgba(0, 0, 0, 0.35) 19.27%,
-        rgba(0, 0, 0, 0) 29.17%
-      ),
-      url(${movieImgUrl})
-    `;
+  const movieImgUrl = 'https://image.tmdb.org/t/p/w500' + movie.poster_path;
+  console.log(movieImgUrl)
+  headerSection.style.background = `
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.35) 19.27%,
+      rgba(0, 0, 0, 0) 29.17%
+    ),
+    url(${movieImgUrl})
+  `;
+  
+  movieDetailTitle.textContent = movie.title;
+  movieDetailDescription.textContent = movie.overview;
+  movieDetailScore.textContent = movie.vote_average;
 
-    movieDetailTitle.textContent = movie.title;
-    movieDetailDescription.textContent = movie.overview;
-    movieDetailScore.textContent = movie.vote_average;
+  createCategories(movie.genres, movieDetailCategoriesList);
 
-    createCategories(movie.genres, movieDetailCategoriesList)
-
-    getRelateMoviesId(id)
-
-  } catch (error) {
-    // Aquí manejas el error
-    if (error.response) {
-      // La solicitud fue realizada y el servidor respondió con un código de estado fuera del rango 2xx
-      console.error('Respuesta del servidor con error:', error.response.data);
-      console.error('Código de estado:', error.response.status);
-    } else if (error.request) {
-      // La solicitud fue realizada pero no se recibió respuesta
-      console.error('No se recibió respuesta del servidor');
-    } else {
-      // Ocurrió un error al configurar la solicitud
-      console.error('Error al configurar la solicitud:', error.message);
-    }
-  }
+  getRelatedMoviesId(id);
 }
 
-async function getRelateMoviesId(id) {
-  const {data} = await api(`movie/${id}/recommendations`);
-  const relatedMovie = data.results;
+async function getRelatedMoviesId(id) {
+  const { data } = await api(`movie/${id}/recommendations`);
+  const relatedMovies = data.results;
 
-  createmovies(relatedMovie, relatedMoviesContainer);
+  createMovies(relatedMovies, relatedMoviesContainer);
 }
 
-async function getPaginatedTrendingMovies() {
-  try{
-    const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+function getLikedMovies() {
+  const likedMovies = likedMoviesList();
+  const moviesArray = Object.values(likedMovies);
 
-    const scrollIsBottom = (scrollTop + clientHeight) >= (scrollHeight -15);
-    const pageIsNotMax = page < maxPage;
-
-    if (scrollIsBottom && pageIsNotMax) {
-      page++
-      const {data} = await api('trending/movie/day', {
-        params: {
-          page
-        },
-      });
-      const movies = data.results;
-
-      createmovies(movies, genericSection, {lazyLoad: true, clean: false});
-    }
-
-  } catch (error) {
-    // Aquí manejas el error
-    if (error.response) {
-      // La solicitud fue realizada y el servidor respondió con un código de estado fuera del rango 2xx
-      console.error('Respuesta del servidor con error:', error.response.data);
-      console.error('Código de estado:', error.response.status);
-    } else if (error.request) {
-      // La solicitud fue realizada pero no se recibió respuesta
-      console.error('No se recibió respuesta del servidor');
-    } else {
-      // Ocurrió un error al configurar la solicitud
-      console.error('Error al configurar la solicitud:', error.message);
-    }
-  }
+  createMovies(moviesArray, likedMovieListArticle, { lazyLoad: true, clean: true });
 }
